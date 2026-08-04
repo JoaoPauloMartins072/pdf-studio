@@ -2,12 +2,14 @@
 
 import { PageAnnotationOverlay } from "@/components/editor/PageAnnotationOverlay";
 import { DemoPayDownloadModal } from "@/components/editor/DemoPayDownloadModal";
+import { ModelDirtyRenderCanvas } from "@/components/editor/ModelDirtyRenderCanvas";
 import { OpenPdfLanding } from "@/components/editor/OpenPdfLanding";
 import { PdfWorkspaceTopBar } from "@/components/editor/PdfWorkspaceTopBar";
 import { PdfToolsToolbar } from "@/components/editor/PdfToolsToolbar";
 import { RotateDeletePageBar } from "@/components/editor/RotateDeletePageBar";
 import { RenderPdfPageCanvas } from "@/components/editor/RenderPdfPageCanvas";
 import { PageThumbnailsRail } from "@/components/editor/PageThumbnailsRail";
+import { SelectionActionsBar } from "@/components/editor/SelectionActionsBar";
 import { toolCursor, useFolioPdfWorkspace } from "@/hooks/useFolioPdfWorkspace";
 
 export function FolioPdfWorkspace() {
@@ -53,10 +55,17 @@ export function FolioPdfWorkspace() {
         onToggleThumbs={() => ws.setShowThumbs((v) => !v)}
         canUndo={ws.history.canUndo}
         canRedo={ws.history.canRedo}
-        onUndo={() => ws.applySnapshot(ws.history.undo())}
-        onRedo={() => ws.applySnapshot(ws.history.redo())}
+        onUndo={() => ws.history.undo()}
+        onRedo={() => ws.history.redo()}
         onDeleteSelected={ws.deleteSelected}
-        hasSelection={!!ws.selectedId}
+        hasSelection={!!ws.selectedId || ws.selectedObjectIds.length > 0}
+      />
+
+      <SelectionActionsBar
+        selectionCount={ws.selectedObjectIds.length}
+        onDuplicate={ws.duplicateSelected}
+        onAlign={ws.alignSelected}
+        onZOrder={ws.reorderSelected}
       />
 
       {ws.tool === "managePages" && (
@@ -92,6 +101,17 @@ export function FolioPdfWorkspace() {
               scale={1.25}
               onRendered={(w, h) => ws.setViewport({ w, h })}
             />
+            {ws.documentModel && ws.baselineModel && (
+              <ModelDirtyRenderCanvas
+                documentModel={ws.documentModel}
+                baseline={ws.baselineModel}
+                displayList={ws.doc.displayList}
+                pageIndex={ws.srcPageIndex}
+                width={ws.viewport.w}
+                height={ws.viewport.h}
+                dirtyObjectIds={ws.dirtyObjectIds}
+              />
+            )}
             <div
               ref={ws.overlayRef}
               className="absolute inset-0 touch-none"
@@ -99,17 +119,19 @@ export function FolioPdfWorkspace() {
               onPointerDown={ws.onOverlayPointerDown}
               onPointerMove={ws.onOverlayPointerMove}
               onPointerUp={ws.onOverlayPointerUp}
+              onPointerLeave={ws.clearHoverObject}
             >
               <PageAnnotationOverlay
                 tool={ws.tool}
                 viewport={ws.viewport}
                 annotations={ws.pageAnns}
-                textItems={ws.pageTexts}
+                pageObjects={ws.pageObjects}
                 selectedId={ws.selectedId}
+                selectedObjectIds={ws.selectedObjectIds}
+                hoverObjectId={ws.hoverObjectId}
                 drawDraft={ws.drawDraft}
                 highlightDraft={ws.highlightDraft}
                 onSelect={ws.setSelectedId}
-                onEditNative={ws.editNativeText}
                 onStartDrag={ws.startAnnDrag}
                 onChangeText={ws.updateText}
               />

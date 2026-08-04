@@ -2,8 +2,15 @@
 
 import { useCallback, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
+import type { EditableDocument } from "@/core/document-model/types";
+import type { DocumentDisplayList } from "@/core/display-list/types";
+import { openDocumentFromDisplayList } from "@/core/pipeline/openDocument";
 import type { ExtractedTextItem, PageMeta } from "@/lib/editor/editorModel";
-import { extractPageTextItems } from "@/lib/pdf/extractPdfTextBoxes";
+import {
+  extractedTextItemsFromDocument,
+  pageMetaFromDocument,
+} from "@/lib/editor/textItemsFromDocument";
+import { buildDisplayListFromPdfJs } from "@/lib/pdf/buildDisplayListFromPdfJs";
 import { openPdfDocument } from "@/lib/pdf/loadPdfJsWorker";
 
 export type OpenedPdf = {
@@ -12,7 +19,11 @@ export type OpenedPdf = {
   filename: string;
   pageOrder: number[];
   pageMeta: PageMeta[];
+  /** Legacy overlay hit targets — derived from the document model. */
   textItems: ExtractedTextItem[];
+  /** Stage 1: Editable Document Model (read-only for editing until Stage 3). */
+  documentModel: EditableDocument;
+  displayList: DocumentDisplayList;
 };
 
 export function useLoadPdfFile() {
@@ -27,22 +38,27 @@ export function useLoadPdfFile() {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const pdf = await openPdfDocument(bytes);
       const pageOrder = Array.from({ length: pdf.numPages }, (_, i) => i);
-      const pageMeta: PageMeta[] = [];
 
-      for (let i = 0; i < pdf.numPages; i++) {
-        const page = await pdf.getPage(i + 1);
-        const v = page.getViewport({ scale: 1 });
-        pageMeta.push({ width: v.width, height: v.height, rotation: 0 });
-      }
+      // Stage 1 path: pdf.js → Display List → Editable Document Model
+      const displayList = await buildDisplayListFromPdfJs(pdf, pageOrder);
+      const sourceName = file.name || "document.pdf";
+      const { document: documentModel } = openDocumentFromDisplayList(
+        displayList,
+        sourceName,
+      );
 
-      const textItems = await extractPageTextItems(pdf, pageOrder);
+      const pageMeta = pageMetaFromDocument(documentModel);
+      const textItems = extractedTextItemsFromDocument(documentModel);
+
       setDoc({
         pdf,
         sourceBytes: bytes,
-        filename: file.name.replace(/\.pdf$/i, "") + "-edited.pdf",
+        filename: sourceName.replace(/\.pdf$/i, "") + "-edited.pdf",
         pageOrder,
         pageMeta,
         textItems,
+        documentModel,
+        displayList,
       });
     } catch (e) {
       setDoc(null);

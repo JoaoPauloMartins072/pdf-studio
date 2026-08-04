@@ -20,7 +20,6 @@ function toPdfY(pageHeight: number, topNorm: number, boxHeightNorm = 0) {
 function needsUnicodeFont(text: string): boolean {
   for (const ch of text) {
     const code = ch.codePointAt(0) ?? 0;
-    // Outside basic WinAnsi-ish Latin-1 printable range → use Unicode font
     if (code > 0xff) return true;
   }
   return false;
@@ -68,7 +67,6 @@ async function resolveFonts(out: PDFDocument): Promise<{
     return { latin, unicode: latin };
   }
   out.registerFontkit(fontkit);
-  // Prefer subset for smaller downloads; fall back if fontkit subset fails on this face
   let unicode: PDFFont;
   try {
     unicode = await out.embedFont(bytes, { subset: true });
@@ -83,8 +81,8 @@ function pickFont(text: string, fonts: { latin: PDFFont; unicode: PDFFont }): PD
 }
 
 /**
- * Bake editor annotations into a new PDF.
- * Page order / rotation / deletions come from `pageOrder` + `pageMeta`.
+ * @deprecated Stage 4 — editor export uses FolioPdfLibSerializer.
+ * Kept only for emergency/compat callers.
  */
 export async function bakeEditsIntoPdf(
   sourceBytes: Uint8Array,
@@ -98,8 +96,8 @@ export async function bakeEditsIntoPdf(
   const copied = await out.copyPages(src, pageOrder);
 
   for (let i = 0; i < copied.length; i++) {
-    const page = copied[i];
-    const srcIndex = pageOrder[i];
+    const page = copied[i]!;
+    const srcIndex = pageOrder[i]!;
     const meta = pageMeta[srcIndex];
     if (meta?.rotation) {
       page.setRotation(degrees((page.getRotation().angle + meta.rotation) % 360));
@@ -164,8 +162,8 @@ export async function bakeEditsIntoPdf(
           if (ann.points.length < 2) break;
           const c = hexToRgb(ann.color);
           for (let p = 1; p < ann.points.length; p++) {
-            const a = ann.points[p - 1];
-            const b = ann.points[p];
+            const a = ann.points[p - 1]!;
+            const b = ann.points[p]!;
             page.drawLine({
               start: { x: a.x * width, y: height - a.y * height },
               end: { x: b.x * width, y: height - b.y * height },

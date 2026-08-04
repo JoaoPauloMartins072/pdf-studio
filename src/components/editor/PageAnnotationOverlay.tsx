@@ -5,21 +5,23 @@ import type {
   Annotation,
   DrawAnnotation,
   EditorTool,
-  ExtractedTextItem,
   HighlightAnnotation,
 } from "@/lib/editor/editorModel";
+import type { ObjectId, PageObject } from "@/core/document-model/types";
 import { pointsToSvgPath } from "@/lib/editor/pageNormCoords";
 
 type Props = {
   tool: EditorTool;
   viewport: { w: number; h: number };
   annotations: Annotation[];
-  textItems: ExtractedTextItem[];
+  /** Page objects from the Editable Document Model (Stage 2 selection). */
+  pageObjects: PageObject[];
   selectedId: string | null;
+  selectedObjectIds: ObjectId[];
+  hoverObjectId: ObjectId | null;
   drawDraft: DrawAnnotation | null;
   highlightDraft: HighlightAnnotation | null;
   onSelect: (id: string | null) => void;
-  onEditNative: (item: ExtractedTextItem) => void;
   onStartDrag: (e: PointerEvent, id: string, mode: "move" | "resize") => void;
   onChangeText: (id: string, text: string) => void;
 };
@@ -28,39 +30,50 @@ export function PageAnnotationOverlay({
   tool,
   viewport,
   annotations,
-  textItems,
+  pageObjects,
   selectedId,
+  selectedObjectIds,
+  hoverObjectId,
   drawDraft,
   highlightDraft,
   onSelect,
-  onEditNative,
   onStartDrag,
   onChangeText,
 }: Props) {
+  const showModelChrome = tool === "editText" || tool === "select";
+  const selectedSet = new Set(selectedObjectIds);
+
   return (
     <>
-      {(tool === "editText" || tool === "select") &&
-        textItems.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            data-text-item
-            title={t.text}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (tool === "editText") onEditNative(t);
-            }}
-            className={`absolute border border-transparent ${
-              tool === "editText" ? "hover:border-sky-400 hover:bg-sky-200/30" : ""
-            }`}
-            style={{
-              left: `${t.x * 100}%`,
-              top: `${t.y * 100}%`,
-              width: `${t.width * 100}%`,
-              height: `${t.height * 100}%`,
-            }}
-          />
-        ))}
+      {showModelChrome &&
+        pageObjects.map((obj) => {
+          const selected = selectedSet.has(obj.id);
+          const hovered = hoverObjectId === obj.id;
+          const editIdle = tool === "editText" && obj.kind === "text";
+
+          if (!selected && !hovered && !editIdle) return null;
+
+          return (
+            <div
+              key={obj.id}
+              data-model-object={obj.id}
+              className={`pointer-events-none absolute ${
+                selected
+                  ? "border-2 border-sky-500 bg-sky-400/20"
+                  : hovered
+                    ? "border border-sky-400 bg-sky-300/25"
+                    : "border border-sky-400/35"
+              }`}
+              style={{
+                left: `${obj.bbox.x * 100}%`,
+                top: `${obj.bbox.y * 100}%`,
+                width: `${obj.bbox.width * 100}%`,
+                height: `${obj.bbox.height * 100}%`,
+              }}
+              title={obj.kind === "text" ? obj.content : obj.kind}
+            />
+          );
+        })}
 
       {annotations.map((ann) => {
         if (ann.type === "draw") {

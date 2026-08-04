@@ -207,6 +207,7 @@ Ordem sugerida de investimento (pode mudar):
 | 2026-08-04 | `chore/agents-qa-producer` | Agents QA+Producer; este roadmap; QA#1 | ✓ | Ver diário |
 | 2026-08-04 | QA#1 | Relatório `docs/QA-REPORT-001.md` + smoke `scripts/qa-smoke-pdf.mts` | ✓ | **Ready with minor follow-ups** |
 | 2026-08-04 | refactor (Desktop) | App pages padrão Next; libs PDF partilhadas; `useFolioPdfWorkspace`; nomes claros components | ▶ sync → git | Fix High Unicode bake · sync worktree → commit |
+| 2026-08-04 | feat/editor-unicode-bake | Unicode bake fix (NotoSansJP) + compress filename + checkout editor URL + eslint ignore worker | ? | Split multi-download ainda MED |
 | 2026-08-04 | audit IDE | Revalidar agents UTF-8; confirmar gitignore; alinhar Desktop ↔ worktree | ▶ agora | Re-run smoke + decidir próximo feat |
 
 ### Veredicto QA#1 (atalho)

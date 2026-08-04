@@ -1,4 +1,5 @@
-import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
+import { PDFDocument, PDFFont, rgb, StandardFonts, degrees } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 import { hexToRgb } from "@/lib/parseHexColor";
 import type { Annotation, PageMeta } from "@/lib/editor/editorModel";
 import { loadPdfDocument } from "@/lib/pdf/loadPdfDocument";
@@ -16,6 +17,71 @@ function toPdfY(pageHeight: number, topNorm: number, boxHeightNorm = 0) {
   return pageHeight - (topNorm + boxHeightNorm) * pageHeight;
 }
 
+function needsUnicodeFont(text: string): boolean {
+  for (const ch of text) {
+    const code = ch.codePointAt(0) ?? 0;
+    // Outside basic WinAnsi-ish Latin-1 printable range → use Unicode font
+    if (code > 0xff) return true;
+  }
+  return false;
+}
+
+async function loadFontBytes(): Promise<Uint8Array | null> {
+  const candidates =
+    typeof window === "undefined"
+      ? [
+          ["public", "fonts", "NotoSansJP-Regular.ttf"],
+          ["public", "fonts", "NotoSansJP-Regular.otf"],
+          ["public", "fonts", "NotoSans-Regular.ttf"],
+        ]
+      : [
+          "/fonts/NotoSansJP-Regular.ttf",
+          "/fonts/NotoSansJP-Regular.otf",
+          "/fonts/NotoSans-Regular.ttf",
+        ];
+
+  for (const candidate of candidates) {
+    try {
+      if (typeof window === "undefined") {
+        const { readFile } = await import("node:fs/promises");
+        const { join } = await import("node:path");
+        const path = join(process.cwd(), ...(candidate as string[]));
+        return new Uint8Array(await readFile(path));
+      }
+      const res = await fetch(candidate as string);
+      if (!res.ok) continue;
+      return new Uint8Array(await res.arrayBuffer());
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+async function resolveFonts(out: PDFDocument): Promise<{
+  latin: PDFFont;
+  unicode: PDFFont;
+}> {
+  const latin = await out.embedFont(StandardFonts.Helvetica);
+  const bytes = await loadFontBytes();
+  if (!bytes) {
+    return { latin, unicode: latin };
+  }
+  out.registerFontkit(fontkit);
+  // Prefer subset for smaller downloads; fall back if fontkit subset fails on this face
+  let unicode: PDFFont;
+  try {
+    unicode = await out.embedFont(bytes, { subset: true });
+  } catch {
+    unicode = await out.embedFont(bytes, { subset: false });
+  }
+  return { latin, unicode };
+}
+
+function pickFont(text: string, fonts: { latin: PDFFont; unicode: PDFFont }): PDFFont {
+  return needsUnicodeFont(text) ? fonts.unicode : fonts.latin;
+}
+
 /**
  * Bake editor annotations into a new PDF.
  * Page order / rotation / deletions come from `pageOrder` + `pageMeta`.
@@ -28,7 +94,7 @@ export async function bakeEditsIntoPdf(
 ): Promise<Uint8Array> {
   const src = await loadPdfDocument(sourceBytes);
   const out = await PDFDocument.create();
-  const font = await out.embedFont(StandardFonts.Helvetica);
+  const fonts = await resolveFonts(out);
   const copied = await out.copyPages(src, pageOrder);
 
   for (let i = 0; i < copied.length; i++) {
@@ -61,6 +127,7 @@ export async function bakeEditsIntoPdf(
         case "nativeText": {
           const c = hexToRgb(ann.color);
           const size = Math.max(8, ann.fontSize * (height / 792));
+          const font = pickFont(ann.text, fonts);
           page.drawRectangle({
             x: ann.x * width,
             y: toPdfY(height, ann.y, ann.height),
@@ -81,7 +148,9 @@ export async function bakeEditsIntoPdf(
         case "text": {
           const c = hexToRgb(ann.color);
           const size = Math.max(8, ann.fontSize);
-          page.drawText(ann.text || " ", {
+          const text = ann.text || " ";
+          const font = pickFont(text, fonts);
+          page.drawText(text, {
             x: ann.x * width,
             y: height - ann.y * height - size,
             size,

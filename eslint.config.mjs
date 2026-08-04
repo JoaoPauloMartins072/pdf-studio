@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored PDF.js worker — not app source
+    "public/pdf.worker.min.mjs",
+    "public/fonts/**",
   ]),
 ]);
 

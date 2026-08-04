@@ -165,7 +165,7 @@ async function main() {
   push("bake reorder+delete pages", (await load(baked)).getPageCount() === 2, `pages=${(await load(baked)).getPageCount()}`);
 
   try {
-    await bakeEditsIntoPdf(
+    const unicodePdf = await bakeEditsIntoPdf(
       src,
       [
         {
@@ -184,10 +184,14 @@ async function main() {
       [0],
       [{ rotation: 0 }],
     );
-    push("bake unicode text", true, "succeeded");
+    push(
+      "bake unicode text (NotoSansJP)",
+      unicodePdf.byteLength > 0,
+      `bytes=${unicodePdf.byteLength}`,
+    );
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    push("bake unicode throws (WinAnsi/Helvetica)", true, msg.slice(0, 160));
+    push("bake unicode text (NotoSansJP)", false, msg.slice(0, 160));
   }
 
   try {
@@ -198,14 +202,12 @@ async function main() {
     push("corrupt PDF merge throws", true, msg.slice(0, 120));
   }
 
-  // Simulate compress UI filename footgun
+  // Compress download name must not become "undefined-compressed.pdf"
   const file: { name: string } | null = null;
-  const filename = (file?.name.replace(/\.pdf$/i, "") + "-compressed.pdf") || "compressed.pdf";
-  push(
-    "compress filename null coalescing bug",
-    filename === "undefined-compressed.pdf",
-    `got=${filename}`,
-  );
+  const filename = file
+    ? `${file.name.replace(/\.pdf$/i, "")}-compressed.pdf`
+    : "compressed.pdf";
+  push("compress filename null safe", filename === "compressed.pdf", `got=${filename}`);
 
   console.log(JSON.stringify(results, null, 2));
   const failed = results.filter((r) => !r.ok);

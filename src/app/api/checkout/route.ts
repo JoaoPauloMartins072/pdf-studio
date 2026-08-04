@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
   }
 
   const origin = req.nextUrl.origin;
+  const returnPath = tool === "editor" ? "/editor" : `/tools/${tool}`;
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -47,8 +48,8 @@ export async function POST(req: NextRequest) {
           },
         },
       ],
-      success_url: `${origin}/tools/${tool}?paid=1`,
-      cancel_url: `${origin}/tools/${tool}?paid=0`,
+      success_url: `${origin}${returnPath}?paid=1`,
+      cancel_url: `${origin}${returnPath}?paid=0`,
       metadata: { tool, filename },
     });
 

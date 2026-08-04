@@ -77,7 +77,9 @@ export default function CompressPage() {
       <ToolFinishCheckout
         ready={Boolean(stats)}
         tool="compress"
-        filename={file?.name.replace(/\.pdf$/i, "") + "-compressed.pdf" || "compressed.pdf"}
+        filename={
+          file ? `${file.name.replace(/\.pdf$/i, "")}-compressed.pdf` : "compressed.pdf"
+        }
         getBytes={async () => {
           if (!stats) throw new Error("Nothing to download");
           return stats.bytes;

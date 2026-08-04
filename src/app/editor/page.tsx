@@ -1,5 +1,5 @@
-import { PdfEditor } from "@/components/editor/PdfEditor";
+import { FolioPdfWorkspace } from "@/components/editor/FolioPdfWorkspace";
 
 export default function EditorPage() {
-  return <PdfEditor />;
+  return <FolioPdfWorkspace />;
 }

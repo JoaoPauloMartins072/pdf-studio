@@ -1,6 +1,7 @@
 import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
-import { hexToRgb } from "@/lib/color";
-import type { Annotation, PageMeta } from "@/lib/editor/types";
+import { hexToRgb } from "@/lib/parseHexColor";
+import type { Annotation, PageMeta } from "@/lib/editor/editorModel";
+import { loadPdfDocument } from "@/lib/pdf/loadPdfDocument";
 
 async function embedDataUrl(pdf: PDFDocument, dataUrl: string) {
   const res = await fetch(dataUrl);
@@ -19,13 +20,13 @@ function toPdfY(pageHeight: number, topNorm: number, boxHeightNorm = 0) {
  * Bake editor annotations into a new PDF.
  * Page order / rotation / deletions come from `pageOrder` + `pageMeta`.
  */
-export async function exportEditedPdf(
+export async function bakeEditsIntoPdf(
   sourceBytes: Uint8Array,
   annotations: Annotation[],
   pageOrder: number[],
   pageMeta: PageMeta[],
 ): Promise<Uint8Array> {
-  const src = await PDFDocument.load(sourceBytes, { ignoreEncryption: true });
+  const src = await loadPdfDocument(sourceBytes);
   const out = await PDFDocument.create();
   const font = await out.embedFont(StandardFonts.Helvetica);
   const copied = await out.copyPages(src, pageOrder);

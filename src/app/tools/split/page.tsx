@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Dropzone } from "@/components/Dropzone";
-import { Paywall } from "@/components/Paywall";
-import { ToolShell } from "@/components/ToolShell";
-import { extractPages, getPageCount, splitPdfToPages } from "@/lib/pdf/split";
-import { downloadBytes } from "@/lib/download";
+import { PdfFileDropzone } from "@/components/PdfFileDropzone";
+import { ToolFinishCheckout } from "@/components/ToolFinishCheckout";
+import { PdfToolPageShell } from "@/components/PdfToolPageShell";
+import { downloadPdfFile } from "@/lib/downloadPdfFile";
+import {
+  extractPages,
+  getPageCount,
+  parsePageRange,
+  splitPdfToPages,
+} from "@/lib/pdf/splitPdfBytes";
 
 export default function SplitPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -13,13 +18,13 @@ export default function SplitPage() {
   const [mode, setMode] = useState<"all" | "range">("all");
   const [range, setRange] = useState("1-1");
   const [error, setError] = useState<string | null>(null);
-  const [unlocked, setUnlocked] = useState(false);
+  const [exportedAll, setExportedAll] = useState(false);
 
   async function onFiles(files: File[]) {
     const f = files[0];
     if (!f) return;
     setError(null);
-    setUnlocked(false);
+    setExportedAll(false);
     try {
       const count = await getPageCount(await f.arrayBuffer());
       setFile(f);
@@ -30,33 +35,12 @@ export default function SplitPage() {
     }
   }
 
-  function parseRange(input: string, max: number): number[] {
-    const pages = new Set<number>();
-    for (const part of input.split(",")) {
-      const trimmed = part.trim();
-      if (!trimmed) continue;
-      if (trimmed.includes("-")) {
-        const [a, b] = trimmed.split("-").map((x) => parseInt(x.trim(), 10));
-        if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
-        const start = Math.min(a, b);
-        const end = Math.max(a, b);
-        for (let i = start; i <= end; i++) {
-          if (i >= 1 && i <= max) pages.add(i);
-        }
-      } else {
-        const n = parseInt(trimmed, 10);
-        if (n >= 1 && n <= max) pages.add(n);
-      }
-    }
-    return Array.from(pages).sort((a, b) => a - b);
-  }
-
   return (
-    <ToolShell
+    <PdfToolPageShell
       title="Split PDF"
       description="Extract a page range into one file, or export every page separately after unlock."
     >
-      <Dropzone multiple={false} label="Drop a PDF to split" onFiles={onFiles} />
+      <PdfFileDropzone multiple={false} label="Drop a PDF to split" onFiles={onFiles} />
 
       {file && (
         <div className="rounded-2xl border border-[var(--ink)]/10 bg-white/70 p-5">
@@ -109,37 +93,34 @@ export default function SplitPage() {
         </p>
       )}
 
-      <Paywall
+      <ToolFinishCheckout
         ready={Boolean(file)}
         tool="split"
         filename={
           mode === "range"
-            ? file?.name.replace(/\.pdf$/i, "") + "-extract.pdf" || "extract.pdf"
+            ? `${file?.name.replace(/\.pdf$/i, "") || "extract"}-extract.pdf`
             : "page-1.pdf"
         }
         getBytes={async () => {
           if (!file) throw new Error("No file");
           const buf = await file.arrayBuffer();
           if (mode === "range") {
-            const pages = parseRange(range, pageCount);
-            return extractPages(buf, pages);
+            return extractPages(buf, parsePageRange(range, pageCount));
           }
-          // For "all pages" mode: download page 1 here; unlock also triggers zip-like sequential downloads
           const parts = await splitPdfToPages(buf);
-          // Download remaining pages after first
           for (let i = 1; i < parts.length; i++) {
-            downloadBytes(parts[i].bytes, `page-${parts[i].pageNumber}.pdf`);
+            downloadPdfFile(parts[i].bytes, `page-${parts[i].pageNumber}.pdf`);
           }
-          setUnlocked(true);
+          setExportedAll(true);
           return parts[0].bytes;
         }}
       />
 
-      {unlocked && mode === "all" && (
+      {exportedAll && mode === "all" && (
         <p className="text-sm text-[var(--muted)]">
           Each page was saved as a separate PDF in your downloads folder.
         </p>
       )}
-    </ToolShell>
+    </PdfToolPageShell>
   );
 }

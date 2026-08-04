@@ -1,17 +1,20 @@
 import { PDFDocument } from "pdf-lib";
+import { loadPdfDocument } from "@/lib/pdf/loadPdfDocument";
 
-/**
- * MVP compress: rebuild the PDF with object streams.
- * Heavier compression (image downsample / Ghostscript) comes later server-side.
- */
-export async function compressPdf(file: ArrayBuffer): Promise<{
+export type CompressPdfResult = {
   bytes: Uint8Array;
   originalBytes: number;
   compressedBytes: number;
   ratio: number;
-}> {
+};
+
+/**
+ * MVP compress: rebuild the PDF with object streams.
+ * Heavier image compression comes later (server-side).
+ */
+export async function compressPdf(file: ArrayBuffer): Promise<CompressPdfResult> {
   const originalBytes = file.byteLength;
-  const src = await PDFDocument.load(file, { ignoreEncryption: true });
+  const src = await loadPdfDocument(file);
   const out = await PDFDocument.create();
   const pages = await out.copyPages(src, src.getPageIndices());
   for (const page of pages) {
@@ -20,8 +23,7 @@ export async function compressPdf(file: ArrayBuffer): Promise<{
 
   const bytes = await out.save({ useObjectStreams: true });
   const compressedBytes = bytes.byteLength;
-  const ratio =
-    originalBytes === 0 ? 0 : 1 - compressedBytes / originalBytes;
+  const ratio = originalBytes === 0 ? 0 : 1 - compressedBytes / originalBytes;
 
   return { bytes, originalBytes, compressedBytes, ratio };
 }

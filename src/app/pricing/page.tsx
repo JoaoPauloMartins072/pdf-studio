@@ -1,5 +1,5 @@
-import { PRICE_LABEL, PRICE_PER_PDF_CENTS, TOOLS } from "@/lib/pricing";
 import Link from "next/link";
+import { PRICE_LABEL, PRICE_PER_PDF_CENTS, TOOLS } from "@/lib/folioCatalog";
 
 export default function PricingPage() {
   return (

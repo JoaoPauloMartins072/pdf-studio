@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Dropzone } from "@/components/Dropzone";
-import { Paywall } from "@/components/Paywall";
-import { ToolShell } from "@/components/ToolShell";
-import { compressPdf, formatBytes } from "@/lib/pdf/compress";
+import { PdfFileDropzone } from "@/components/PdfFileDropzone";
+import { ToolFinishCheckout } from "@/components/ToolFinishCheckout";
+import { PdfToolPageShell } from "@/components/PdfToolPageShell";
+import { compressPdf, formatBytes } from "@/lib/pdf/compressPdfBytes";
 
 export default function CompressPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -35,11 +35,11 @@ export default function CompressPage() {
   }
 
   return (
-    <ToolShell
+    <PdfToolPageShell
       title="Compress PDF"
       description="Rebuild your PDF with leaner object streams. Heavy image compression comes in a later release."
     >
-      <Dropzone
+      <PdfFileDropzone
         multiple={false}
         label={busy ? "Compressing…" : "Drop a PDF to compress"}
         onFiles={onFiles}
@@ -74,7 +74,7 @@ export default function CompressPage() {
         </p>
       )}
 
-      <Paywall
+      <ToolFinishCheckout
         ready={Boolean(stats)}
         tool="compress"
         filename={file?.name.replace(/\.pdf$/i, "") + "-compressed.pdf" || "compressed.pdf"}
@@ -83,6 +83,6 @@ export default function CompressPage() {
           return stats.bytes;
         }}
       />
-    </ToolShell>
+    </PdfToolPageShell>
   );
 }

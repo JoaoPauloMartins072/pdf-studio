@@ -11,7 +11,7 @@ const links = [
   { href: "/tools/compress", label: "Compress" },
 ];
 
-export function Header() {
+export function SiteHeader() {
   const pathname = usePathname();
 
   return (

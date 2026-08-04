@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export function Footer() {
+export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-[var(--ink)]/10 bg-[var(--paper-deep)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 sm:flex-row sm:items-center sm:justify-between">

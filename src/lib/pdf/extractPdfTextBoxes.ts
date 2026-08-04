@@ -1,5 +1,5 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import type { ExtractedTextItem } from "@/lib/editor/types";
+import type { ExtractedTextItem } from "@/lib/editor/editorModel";
 
 type TextContentItem = {
   str?: string;

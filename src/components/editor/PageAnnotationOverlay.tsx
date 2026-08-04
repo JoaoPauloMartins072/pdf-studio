@@ -7,8 +7,8 @@ import type {
   EditorTool,
   ExtractedTextItem,
   HighlightAnnotation,
-} from "@/lib/editor/types";
-import { pointsToSvgPath } from "@/lib/editor/geometry";
+} from "@/lib/editor/editorModel";
+import { pointsToSvgPath } from "@/lib/editor/pageNormCoords";
 
 type Props = {
   tool: EditorTool;
@@ -24,7 +24,7 @@ type Props = {
   onChangeText: (id: string, text: string) => void;
 };
 
-export function AnnotationLayer({
+export function PageAnnotationOverlay({
   tool,
   viewport,
   annotations,

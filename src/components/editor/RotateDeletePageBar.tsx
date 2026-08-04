@@ -9,7 +9,7 @@ type Props = {
   onDelete: () => void;
 };
 
-export function ManagePagesBar({ pageLabel, canDelete, onRotate, onDelete }: Props) {
+export function RotateDeletePageBar({ pageLabel, canDelete, onRotate, onDelete }: Props) {
   return (
     <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-4 py-2 text-sm">
       <span className="text-zinc-500">{pageLabel}</span>

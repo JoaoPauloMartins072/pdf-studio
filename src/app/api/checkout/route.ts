@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CURRENCY, PRICE_PER_PDF_CENTS } from "@/lib/pricing";
-import { getStripe, isStripeConfigured } from "@/lib/stripe";
+import { CURRENCY, PRICE_PER_PDF_CENTS } from "@/lib/folioCatalog";
+import { getStripe, isStripeConfigured } from "@/lib/stripeServerClient";
 
+/**
+ * POST /api/checkout
+ * Creates a Stripe Checkout session, or returns demo mode when keys are missing.
+ */
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     tool?: string;
@@ -12,7 +16,6 @@ export async function POST(req: NextRequest) {
   const filename = body.filename || "document.pdf";
 
   if (!isStripeConfigured()) {
-    // Local / early MVP: unlock without real charge
     return NextResponse.json({
       mode: "demo",
       message:
@@ -31,7 +34,6 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      // Apple Pay / Google Pay appear automatically when enabled in Stripe Dashboard + domain
       line_items: [
         {
           quantity: 1,

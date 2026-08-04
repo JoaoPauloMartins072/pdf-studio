@@ -11,7 +11,7 @@ type Props = {
   onRendered?: (width: number, height: number) => void;
 };
 
-export function PdfPageCanvas({ pdf, pageIndex, scale = 1.35, className, onRendered }: Props) {
+export function RenderPdfPageCanvas({ pdf, pageIndex, scale = 1.35, className, onRendered }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
 

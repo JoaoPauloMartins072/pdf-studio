@@ -9,8 +9,8 @@ import {
   type SignatureAnnotation,
   type TextAnnotation,
   uid,
-} from "@/lib/editor/types";
-import { makeSignatureDataUrl } from "@/lib/editor/geometry";
+} from "@/lib/editor/editorModel";
+import { makeSignatureDataUrl } from "@/lib/editor/pageNormCoords";
 
 export function createTextAnnotation(pageIndex: number, p: Point): TextAnnotation {
   return {

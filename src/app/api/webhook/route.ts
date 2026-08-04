@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripeServerClient";
 
 /**
- * Stripe webhook placeholder — verify signature and mark jobs paid.
- * Wire this URL in Stripe Dashboard when going live.
+ * POST /api/webhook
+ * Verifies Stripe signatures and handles checkout.session.completed (stub for unlocks).
  */
 export async function POST(req: NextRequest) {
   const stripe = getStripe();
@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
     const event = stripe.webhooks.constructEvent(payload, signature, secret);
 
     if (event.type === "checkout.session.completed") {
-      // Future: persist unlock token / job id for download entitlement
       console.log("Payment completed", event.data.object.id);
     }
 

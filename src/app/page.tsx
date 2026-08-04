@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, Lock, Shield, Zap } from "lucide-react";
-import { TOOLS } from "@/lib/pricing";
+import { TOOLS } from "@/lib/folioCatalog";
 
-export default function Home() {
+export default function HomePage() {
   return (
     <div>
-      {/* Hero — one composition: brand, headline, support, CTAs */}
       <section className="relative overflow-hidden">
         <div
           aria-hidden

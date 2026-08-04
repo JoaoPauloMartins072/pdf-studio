@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
-import type { EditorTool } from "@/lib/editor/types";
+import type { EditorTool } from "@/lib/editor/editorModel";
 import {
   Highlighter,
   Image as ImageIcon,
@@ -47,7 +47,7 @@ type Props = {
   hasSelection: boolean;
 };
 
-export function EditorToolbar({
+export function PdfToolsToolbar({
   tool,
   onTool,
   showThumbs,

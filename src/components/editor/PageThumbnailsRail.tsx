@@ -1,7 +1,7 @@
 "use client";
 
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { PdfPageCanvas } from "@/components/editor/PdfPageCanvas";
+import { RenderPdfPageCanvas } from "@/components/editor/RenderPdfPageCanvas";
 
 type Props = {
   pdf: PDFDocumentProxy;
@@ -10,7 +10,7 @@ type Props = {
   onSelect: (viewIndex: number) => void;
 };
 
-export function ThumbnailSidebar({ pdf, pageOrder, current, onSelect }: Props) {
+export function PageThumbnailsRail({ pdf, pageOrder, current, onSelect }: Props) {
   return (
     <aside className="w-36 shrink-0 overflow-y-auto border-r border-zinc-200 bg-white p-3">
       {pageOrder.map((srcIdx, viewIdx) => (
@@ -23,7 +23,7 @@ export function ThumbnailSidebar({ pdf, pageOrder, current, onSelect }: Props) {
           }`}
         >
           <div className="relative">
-            <PdfPageCanvas pdf={pdf} pageIndex={srcIdx} scale={0.22} className="w-full" />
+            <RenderPdfPageCanvas pdf={pdf} pageIndex={srcIdx} scale={0.22} className="w-full" />
             <span className="absolute bottom-1 left-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold text-white">
               {viewIdx + 1}
             </span>

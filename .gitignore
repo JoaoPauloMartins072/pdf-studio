@@ -41,5 +41,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local handoff notes (may contain personal data)
-CONTEXTO-HANDOFF.md
+# Local Cursor agents (kept on disk, not committed)
+.cursor/agents/

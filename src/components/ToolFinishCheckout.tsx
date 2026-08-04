@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
-import { downloadBytes } from "@/lib/download";
-import { CheckoutModal } from "@/components/editor/CheckoutModal";
+import { downloadPdfFile } from "@/lib/downloadPdfFile";
+import { DemoPayDownloadModal } from "@/components/editor/DemoPayDownloadModal";
 
-type PaywallProps = {
+type ToolFinishCheckoutProps = {
   ready: boolean;
   filename: string;
   getBytes: () => Promise<Uint8Array> | Uint8Array;
@@ -17,7 +17,7 @@ type PaywallProps = {
  * Shared finish flow for merge/split/compress.
  * Opens the same demo checkout as the editor, then downloads locally.
  */
-export function Paywall({ ready, filename, getBytes }: PaywallProps) {
+export function ToolFinishCheckout({ ready, filename, getBytes }: ToolFinishCheckoutProps) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export function Paywall({ ready, filename, getBytes }: PaywallProps) {
     setError(null);
     try {
       const bytes = await getBytes();
-      downloadBytes(bytes, filename);
+      downloadPdfFile(bytes, filename);
       setOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Download failed");
@@ -69,7 +69,7 @@ export function Paywall({ ready, filename, getBytes }: PaywallProps) {
           </p>
         )}
       </div>
-      <CheckoutModal
+      <DemoPayDownloadModal
         open={open}
         filename={filename}
         onClose={() => setOpen(false)}

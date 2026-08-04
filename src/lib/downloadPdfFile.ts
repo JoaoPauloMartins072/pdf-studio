@@ -1,6 +1,6 @@
 import { saveAs } from "file-saver";
 
-export function downloadBytes(bytes: Uint8Array, filename: string) {
+export function downloadPdfFile(bytes: Uint8Array, filename: string) {
   const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], {
     type: "application/pdf",
   });

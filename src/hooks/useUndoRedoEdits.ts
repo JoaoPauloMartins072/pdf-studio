@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { Annotation, PageMeta } from "@/lib/editor/types";
+import type { Annotation, PageMeta } from "@/lib/editor/editorModel";
 
-export type EditorSnapshot = {
+export type PdfEditSnapshot = {
   annotations: Annotation[];
   pageOrder: number[];
   pageMeta: PageMeta[];
@@ -11,7 +11,7 @@ export type EditorSnapshot = {
 
 const MAX_HISTORY = 40;
 
-function cloneSnap(s: EditorSnapshot): EditorSnapshot {
+function cloneSnap(s: PdfEditSnapshot): PdfEditSnapshot {
   return {
     annotations: structuredClone(s.annotations),
     pageOrder: [...s.pageOrder],
@@ -19,9 +19,9 @@ function cloneSnap(s: EditorSnapshot): EditorSnapshot {
   };
 }
 
-export function useEditorHistory(getSnapshot: () => EditorSnapshot) {
-  const pastRef = useRef<EditorSnapshot[]>([]);
-  const futureRef = useRef<EditorSnapshot[]>([]);
+export function useUndoRedoEdits(getSnapshot: () => PdfEditSnapshot) {
+  const pastRef = useRef<PdfEditSnapshot[]>([]);
+  const futureRef = useRef<PdfEditSnapshot[]>([]);
   const [, bump] = useState(0);
   const getRef = useRef(getSnapshot);
   getRef.current = getSnapshot;
@@ -43,7 +43,7 @@ export function useEditorHistory(getSnapshot: () => EditorSnapshot) {
     refresh();
   }, []);
 
-  const undo = useCallback((): EditorSnapshot | null => {
+  const undo = useCallback((): PdfEditSnapshot | null => {
     const past = pastRef.current;
     if (!past.length) return null;
     const prev = past[past.length - 1];
@@ -53,7 +53,7 @@ export function useEditorHistory(getSnapshot: () => EditorSnapshot) {
     return prev;
   }, []);
 
-  const redo = useCallback((): EditorSnapshot | null => {
+  const redo = useCallback((): PdfEditSnapshot | null => {
     const future = futureRef.current;
     if (!future.length) return null;
     const next = future[0];

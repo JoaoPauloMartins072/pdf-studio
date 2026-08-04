@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Upload } from "lucide-react";
-import { EditorHeader } from "@/components/editor/EditorHeader";
+import { PdfWorkspaceTopBar } from "@/components/editor/PdfWorkspaceTopBar";
 
 type Props = {
   loading: boolean;
@@ -11,10 +11,10 @@ type Props = {
   fileInput: ReactNode;
 };
 
-export function EditorEmptyState({ loading, error, onPick, fileInput }: Props) {
+export function OpenPdfLanding({ loading, error, onPick, fileInput }: Props) {
   return (
     <div className="flex min-h-screen flex-col bg-zinc-100">
-      <EditorHeader onOpen={onPick} />
+      <PdfWorkspaceTopBar onOpen={onPick} />
       <div className="flex flex-1 items-center justify-center p-6">
         <div className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
           <h1 className="text-2xl font-semibold text-zinc-900">Open a PDF to edit</h1>

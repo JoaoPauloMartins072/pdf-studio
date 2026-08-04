@@ -1,17 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnnotationLayer } from "@/components/editor/AnnotationLayer";
-import { CheckoutModal } from "@/components/editor/CheckoutModal";
-import { EditorEmptyState } from "@/components/editor/EditorEmptyState";
-import { EditorHeader } from "@/components/editor/EditorHeader";
-import { EditorToolbar } from "@/components/editor/EditorToolbar";
-import { ManagePagesBar } from "@/components/editor/ManagePagesBar";
-import { PdfPageCanvas } from "@/components/editor/PdfPageCanvas";
-import { ThumbnailSidebar } from "@/components/editor/ThumbnailSidebar";
-import { useEditorHistory } from "@/hooks/useEditorHistory";
-import { usePdfDocument } from "@/hooks/usePdfDocument";
-import { downloadBytes } from "@/lib/download";
+import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
+import { useUndoRedoEdits } from "@/hooks/useUndoRedoEdits";
+import { useLoadPdfFile } from "@/hooks/useLoadPdfFile";
+import { downloadPdfFile } from "@/lib/downloadPdfFile";
 import {
   createDrawDraft,
   createHighlightDraft,
@@ -21,8 +14,8 @@ import {
   createTextAnnotation,
   moveOrResizeAnnotation,
   updateAnnotationText,
-} from "@/lib/editor/annotations";
-import { pointerToNorm, readFileAsDataUrl } from "@/lib/editor/geometry";
+} from "@/lib/editor/buildAnnotation";
+import { pointerToNorm, readFileAsDataUrl } from "@/lib/editor/pageNormCoords";
 import type {
   Annotation,
   DrawAnnotation,
@@ -31,19 +24,23 @@ import type {
   HighlightAnnotation,
   PageMeta,
   Point,
-} from "@/lib/editor/types";
-import { exportEditedPdf } from "@/lib/pdf/exportEdited";
+} from "@/lib/editor/editorModel";
+import { bakeEditsIntoPdf } from "@/lib/pdf/bakeEditsIntoPdf";
 
 type DragState = { id: string; mode: "move" | "resize"; ox: number; oy: number };
 
-function toolCursor(tool: EditorTool): string {
+export function toolCursor(tool: EditorTool): string {
   if (tool === "draw" || tool === "highlight") return "crosshair";
   if (tool === "addText" || tool === "sign" || tool === "image") return "cell";
   return "default";
 }
 
-export function PdfEditor() {
-  const { doc, loading, error, openFile } = usePdfDocument();
+/**
+ * All mutable editor session state + actions for FolioPdfWorkspace.
+ * Kept separate so the UI component stays mostly declarative.
+ */
+export function useFolioPdfWorkspace() {
+  const { doc, loading, error, openFile } = useLoadPdfFile();
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [pageOrder, setPageOrder] = useState<number[]>([]);
   const [pageMeta, setPageMeta] = useState<PageMeta[]>([]);
@@ -61,15 +58,16 @@ export function PdfEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const historyClearRef = useRef<() => void>(() => undefined);
 
-  const history = useEditorHistory(
+  const history = useUndoRedoEdits(
     useCallback(
       () => ({ annotations, pageOrder, pageMeta }),
       [annotations, pageOrder, pageMeta],
     ),
   );
+  historyClearRef.current = history.clear;
 
-  // Sync local editor state when a new PDF is opened
   useEffect(() => {
     if (!doc) return;
     setAnnotations([]);
@@ -77,9 +75,8 @@ export function PdfEditor() {
     setPageMeta(doc.pageMeta);
     setCurrent(0);
     setSelectedId(null);
-    history.clear();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reset on new document bytes
-  }, [doc?.sourceBytes]);
+    historyClearRef.current();
+  }, [doc?.sourceBytes, doc]);
 
   const srcPageIndex = pageOrder[current] ?? 0;
   const pageAnns = useMemo(
@@ -101,7 +98,8 @@ export function PdfEditor() {
     [],
   );
 
-  const pickPdf = () => fileInputRef.current?.click();
+  const pickPdf = useCallback(() => fileInputRef.current?.click(), []);
+  const pickImage = useCallback(() => imageInputRef.current?.click(), []);
 
   const deleteSelected = useCallback(() => {
     if (!selectedId) return;
@@ -126,7 +124,7 @@ export function PdfEditor() {
     return () => window.removeEventListener("keydown", onKey);
   }, [applySnapshot, deleteSelected, history]);
 
-  function onOverlayPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+  function onOverlayPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (!overlayRef.current) return;
     const target = e.target as HTMLElement;
     if (target.closest("[data-ann]") || target.closest("[data-text-item]")) return;
@@ -143,12 +141,12 @@ export function PdfEditor() {
     }
     if (tool === "draw") {
       setDrawDraft(createDrawDraft(srcPageIndex, p));
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      target.setPointerCapture(e.pointerId);
       return;
     }
     if (tool === "highlight") {
       setHighlightDraft(createHighlightDraft(srcPageIndex, p));
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      target.setPointerCapture(e.pointerId);
       return;
     }
     if (tool === "sign") {
@@ -161,13 +159,13 @@ export function PdfEditor() {
     }
     if (tool === "image") {
       setPendingImagePos(p);
-      imageInputRef.current?.click();
+      pickImage();
       return;
     }
     setSelectedId(null);
   }
 
-  function onOverlayPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+  function onOverlayPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     if (!overlayRef.current) return;
     const p = pointerToNorm(e.clientX, e.clientY, overlayRef.current);
 
@@ -210,7 +208,7 @@ export function PdfEditor() {
     setDrag(null);
   }
 
-  function startAnnDrag(e: React.PointerEvent, id: string, mode: "move" | "resize") {
+  function startAnnDrag(e: ReactPointerEvent, id: string, mode: "move" | "resize") {
     e.stopPropagation();
     if (!overlayRef.current) return;
     if (tool !== "select" && tool !== "editText") return;
@@ -264,134 +262,59 @@ export function PdfEditor() {
 
   async function generateAndDownload() {
     if (!doc) return;
-    const bytes = await exportEditedPdf(doc.sourceBytes, annotations, pageOrder, pageMeta);
-    downloadBytes(bytes, doc.filename);
+    const bytes = await bakeEditsIntoPdf(doc.sourceBytes, annotations, pageOrder, pageMeta);
+    downloadPdfFile(bytes, doc.filename);
     setCheckoutOpen(false);
   }
 
-  const fileInput = (
-    <input
-      ref={fileInputRef}
-      type="file"
-      accept="application/pdf,.pdf"
-      className="hidden"
-      onChange={(e) => {
-        const f = e.target.files?.[0];
-        if (f) void openFile(f);
-        e.target.value = "";
-      }}
-    />
-  );
-
-  if (!doc) {
-    return (
-      <EditorEmptyState
-        loading={loading}
-        error={error}
-        onPick={pickPdf}
-        fileInput={fileInput}
-      />
-    );
+  function selectTool(next: EditorTool) {
+    setTool(next);
+    if (next === "image") pickImage();
   }
 
-  return (
-    <div className="flex h-screen flex-col bg-zinc-200">
-      <EditorHeader onOpen={pickPdf} showDone onDone={() => setCheckoutOpen(true)} />
-
-      <EditorToolbar
-        tool={tool}
-        onTool={(t) => {
-          setTool(t);
-          if (t === "image") imageInputRef.current?.click();
-        }}
-        showThumbs={showThumbs}
-        onToggleThumbs={() => setShowThumbs((v) => !v)}
-        canUndo={history.canUndo}
-        canRedo={history.canRedo}
-        onUndo={() => applySnapshot(history.undo())}
-        onRedo={() => applySnapshot(history.redo())}
-        onDeleteSelected={deleteSelected}
-        hasSelection={!!selectedId}
-      />
-
-      {tool === "managePages" && (
-        <ManagePagesBar
-          pageLabel={`Page ${current + 1} of ${pageOrder.length}`}
-          canDelete={pageOrder.length > 1}
-          onRotate={rotateCurrent}
-          onDelete={deleteCurrentPage}
-        />
-      )}
-
-      <div className="flex min-h-0 flex-1">
-        {showThumbs && (
-          <ThumbnailSidebar
-            pdf={doc.pdf}
-            pageOrder={pageOrder}
-            current={current}
-            onSelect={setCurrent}
-          />
-        )}
-
-        <div className="flex flex-1 justify-center overflow-auto p-6">
-          <div
-            className="relative bg-white shadow-lg"
-            style={{
-              width: viewport.w,
-              transform: `rotate(${pageMeta[srcPageIndex]?.rotation ?? 0}deg)`,
-            }}
-          >
-            <PdfPageCanvas
-              pdf={doc.pdf}
-              pageIndex={srcPageIndex}
-              scale={1.25}
-              onRendered={(w, h) => setViewport({ w, h })}
-            />
-            <div
-              ref={overlayRef}
-              className="absolute inset-0 touch-none"
-              style={{ cursor: toolCursor(tool) }}
-              onPointerDown={onOverlayPointerDown}
-              onPointerMove={onOverlayPointerMove}
-              onPointerUp={onOverlayPointerUp}
-            >
-              <AnnotationLayer
-                tool={tool}
-                viewport={viewport}
-                annotations={pageAnns}
-                textItems={pageTexts}
-                selectedId={selectedId}
-                drawDraft={drawDraft}
-                highlightDraft={highlightDraft}
-                onSelect={setSelectedId}
-                onEditNative={editNativeText}
-                onStartDrag={startAnnDrag}
-                onChangeText={(id, text) => setAnnotations((all) => updateAnnotationText(all, id, text))}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {fileInput}
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void onImagePicked(f);
-          e.target.value = "";
-        }}
-      />
-
-      <CheckoutModal
-        open={checkoutOpen}
-        filename={doc.filename}
-        onClose={() => setCheckoutOpen(false)}
-        onConfirm={generateAndDownload}
-      />
-    </div>
-  );
+  return {
+    doc,
+    loading,
+    error,
+    openFile,
+    annotations,
+    setAnnotations,
+    pageOrder,
+    pageMeta,
+    current,
+    setCurrent,
+    tool,
+    selectTool,
+    showThumbs,
+    setShowThumbs,
+    selectedId,
+    setSelectedId,
+    checkoutOpen,
+    setCheckoutOpen,
+    viewport,
+    setViewport,
+    drawDraft,
+    highlightDraft,
+    srcPageIndex,
+    pageAnns,
+    pageTexts,
+    history,
+    fileInputRef: fileInputRef as RefObject<HTMLInputElement>,
+    imageInputRef: imageInputRef as RefObject<HTMLInputElement>,
+    overlayRef: overlayRef as RefObject<HTMLDivElement>,
+    pickPdf,
+    applySnapshot,
+    deleteSelected,
+    onOverlayPointerDown,
+    onOverlayPointerMove,
+    onOverlayPointerUp,
+    startAnnDrag,
+    editNativeText,
+    onImagePicked,
+    rotateCurrent,
+    deleteCurrentPage,
+    generateAndDownload,
+    updateText: (id: string, text: string) =>
+      setAnnotations((all) => updateAnnotationText(all, id, text)),
+  };
 }

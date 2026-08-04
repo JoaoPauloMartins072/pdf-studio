@@ -2,13 +2,13 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 
-type ToolShellProps = {
+type PdfToolPageShellProps = {
   title: string;
   description: string;
   children: ReactNode;
 };
 
-export function ToolShell({ title, description, children }: ToolShellProps) {
+export function PdfToolPageShell({ title, description, children }: PdfToolPageShellProps) {
   return (
     <div className="mx-auto max-w-3xl px-5 py-12">
       <Link

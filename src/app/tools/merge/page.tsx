@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { GripVertical, X } from "lucide-react";
-import { Dropzone } from "@/components/Dropzone";
-import { Paywall } from "@/components/Paywall";
-import { ToolShell } from "@/components/ToolShell";
-import { mergePdfs } from "@/lib/pdf/merge";
+import { PdfFileDropzone } from "@/components/PdfFileDropzone";
+import { ToolFinishCheckout } from "@/components/ToolFinishCheckout";
+import { PdfToolPageShell } from "@/components/PdfToolPageShell";
+import { mergePdfs } from "@/lib/pdf/mergePdfBytes";
 
 type Item = { id: string; file: File };
 
@@ -24,11 +24,11 @@ export default function MergePage() {
   );
 
   return (
-    <ToolShell
+    <PdfToolPageShell
       title="Merge PDFs"
       description="Combine multiple PDFs into one file. Reorder before unlocking download."
     >
-      <Dropzone
+      <PdfFileDropzone
         multiple
         label="Drop PDFs to merge"
         onFiles={(files) => {
@@ -108,7 +108,7 @@ export default function MergePage() {
         </p>
       )}
 
-      <Paywall
+      <ToolFinishCheckout
         ready={ready}
         tool="merge"
         filename="merged.pdf"
@@ -122,6 +122,6 @@ export default function MergePage() {
           }
         }}
       />
-    </ToolShell>
+    </PdfToolPageShell>
   );
 }

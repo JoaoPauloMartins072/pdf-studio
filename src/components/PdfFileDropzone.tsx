@@ -3,19 +3,19 @@
 import { useCallback, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 
-type DropzoneProps = {
+type PdfFileDropzoneProps = {
   multiple?: boolean;
   onFiles: (files: File[]) => void;
   label?: string;
   hint?: string;
 };
 
-export function Dropzone({
+export function PdfFileDropzone({
   multiple = false,
   onFiles,
   label = "Drop PDFs here",
   hint = "or click to browse — processed in your browser",
-}: DropzoneProps) {
+}: PdfFileDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 

@@ -12,7 +12,7 @@ type Props = {
   onConfirm: () => Promise<void>;
 };
 
-export function CheckoutModal({ open, filename, onClose, onConfirm }: Props) {
+export function DemoPayDownloadModal({ open, filename, onClose, onConfirm }: Props) {
   const [method, setMethod] = useState<Method>("card");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

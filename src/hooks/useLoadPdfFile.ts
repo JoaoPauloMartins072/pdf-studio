@@ -2,9 +2,9 @@
 
 import { useCallback, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import type { ExtractedTextItem, PageMeta } from "@/lib/editor/types";
-import { extractPageTextItems } from "@/lib/pdf/extractText";
-import { openPdfDocument } from "@/lib/pdf/pdfjs";
+import type { ExtractedTextItem, PageMeta } from "@/lib/editor/editorModel";
+import { extractPageTextItems } from "@/lib/pdf/extractPdfTextBoxes";
+import { openPdfDocument } from "@/lib/pdf/loadPdfJsWorker";
 
 export type OpenedPdf = {
   pdf: PDFDocumentProxy;
@@ -15,7 +15,7 @@ export type OpenedPdf = {
   textItems: ExtractedTextItem[];
 };
 
-export function usePdfDocument() {
+export function useLoadPdfFile() {
   const [doc, setDoc] = useState<OpenedPdf | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

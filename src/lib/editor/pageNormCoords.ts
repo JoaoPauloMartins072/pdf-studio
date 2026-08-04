@@ -1,4 +1,4 @@
-import type { Point } from "@/lib/editor/types";
+import type { Point } from "@/lib/editor/editorModel";
 
 export function clamp01(n: number) {
   return Math.min(1, Math.max(0, n));

@@ -44,8 +44,15 @@ export type TextObject = PageObjectBase & {
   kind: "text";
   content: string;
   fontResourceId: ResourceId | null;
+  /** CSS/pdf.js fallback family when known (for preview). */
+  fontFamily: string | null;
   fontSize: number;
   fillColor: RgbColor | null;
+  /**
+   * Background to cover when rewriting glyphs (sampled from page raster or
+   * inferred). Null → treat as white until sampled.
+   */
+  coverColor: RgbColor | null;
   /** Raw PDF text encoding / ToUnicode availability. */
   hasUnicodeMap: boolean;
 };

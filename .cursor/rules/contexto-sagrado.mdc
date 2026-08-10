@@ -1,0 +1,16 @@
+---
+description: Sempre ler e atualizar CONTEXTO.md (memória sagrada do Folio)
+alwaysApply: true
+---
+
+# CONTEXTO sagrado
+
+Antes de planear, implementar, debugar ou resumir este projeto:
+
+1. **Ler** `CONTEXTO.md` na raiz do repo.
+2. Tratar esse ficheiro como a fonte de verdade do estado atual (arquitetura, onde paramos, decisões, próximos passos).
+3. **Atualizar** `CONTEXTO.md` quando mudares algo material: stage concluído, bug corrigido/confirmado, decisão de arquitetura, próximo passo, ou handoff entre chats.
+4. Manter o ficheiro conciso e sem segredos (sem `.env`, chaves, dados pessoais/payslip sensíveis).
+5. Não usar `CONTEXTO-HANDOFF.md` como substituto — é histórico pontual; o sagrado é `CONTEXTO.md`.
+
+Se `CONTEXTO.md` e o código discordarem, confiar no código, corrigir o contexto, e seguir.

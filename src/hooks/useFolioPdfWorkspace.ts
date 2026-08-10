@@ -20,7 +20,7 @@ import {
   type ZOrderMode,
 } from "@/core/commands/selectionCommands";
 import { ReplaceTextCommand } from "@/core/commands/replaceTextCommand";
-import type { EditableDocument, ObjectId, TextObject } from "@/core/document-model/types";
+import type { EditableDocument, ObjectId, RgbColor, TextObject } from "@/core/document-model/types";
 import { BBoxHitTester } from "@/core/hit-testing/hitTester";
 import { objectsOnPage, pageIdForIndex } from "@/core/hit-testing/queries";
 import { FolioPdfLibSerializer } from "@/core/serializer/pdfLibSerializer";
@@ -78,6 +78,12 @@ export function useFolioPdfWorkspace() {
   const [hoverObjectId, setHoverObjectId] = useState<ObjectId | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [viewport, setViewport] = useState({ w: 600, h: 800 });
+  const [inlineEdit, setInlineEdit] = useState<{ objectId: ObjectId; draft: string } | null>(
+    null,
+  );
+  const coverColorOverridesRef = useRef<Map<ObjectId, RgbColor>>(new Map());
+  const inlineEditRef = useRef(inlineEdit);
+  inlineEditRef.current = inlineEdit;
   const [drawDraft, setDrawDraft] = useState<DrawAnnotation | null>(null);
   const [highlightDraft, setHighlightDraft] = useState<HighlightAnnotation | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -122,6 +128,7 @@ export function useFolioPdfWorkspace() {
     engineRef.current = engine;
     setDocumentModel(engine.getDocument());
     const unsub = engine.subscribe((next) => setDocumentModel(next));
+    coverColorOverridesRef.current.clear();
 
     setAnnotations([]);
     setPageOrder(doc.pageOrder);
@@ -130,6 +137,7 @@ export function useFolioPdfWorkspace() {
     setSelectedId(null);
     setSelectedObjectIds([]);
     setHoverObjectId(null);
+    setInlineEdit(null);
     metaPastRef.current = [];
     metaFutureRef.current = [];
     historyClearRef.current();
@@ -145,6 +153,10 @@ export function useFolioPdfWorkspace() {
     () => annotations.filter((a) => a.pageIndex === srcPageIndex),
     [annotations, srcPageIndex],
   );
+  const pageHeight = useMemo(() => {
+    const page = documentModel?.pages.find((p) => p.index === srcPageIndex);
+    return page?.height ?? 792;
+  }, [documentModel, srcPageIndex]);
   const pageObjects = useMemo(() => {
     if (!documentModel) return [];
     const objs = objectsOnPage(documentModel, srcPageIndex);
@@ -318,28 +330,46 @@ export function useFolioPdfWorkspace() {
     return () => window.removeEventListener("keydown", onKey);
   }, [deleteSelected, duplicateSelected, redo, undo]);
 
-  function editTextObject(object: TextObject) {
+  function beginInlineEdit(object: TextObject) {
     if (object.editability !== "structural" && object.editability !== "ocr-assisted") {
-      window.alert(
-        "This text cannot be edited structurally (missing Unicode map or read-only). Visual fallback is not the default path.",
-      );
       return;
     }
-    const next = window.prompt("Edit text", object.content);
-    if (next == null || next === object.content) return;
+    setSelectedObjectIds([object.id]);
+    setSelectedId(null);
+    setInlineEdit({ objectId: object.id, draft: object.content });
+  }
+
+  function commitInlineEdit() {
+    const current = inlineEditRef.current;
+    if (!current) return;
+    inlineEditRef.current = null;
+    setInlineEdit(null);
+    const liveDoc = engineRef.current?.getDocument() ?? documentModel;
+    const live = liveDoc?.pages
+      .flatMap((p) => p.objects)
+      .find((o): o is TextObject => o.kind === "text" && o.id === current.objectId);
+    if (!live || current.draft === live.content) return;
     try {
-      dispatchCommand(new ReplaceTextCommand(object.id, next));
-      setSelectedObjectIds([object.id]);
-      setSelectedId(null);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : "Could not edit text");
+      dispatchCommand(new ReplaceTextCommand(current.objectId, current.draft));
+      setSelectedObjectIds([current.objectId]);
+    } catch {
+      /* ignore */
     }
+  }
+
+  function cancelInlineEdit() {
+    inlineEditRef.current = null;
+    setInlineEdit(null);
   }
 
   function onOverlayPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (!overlayRef.current) return;
     const target = e.target as HTMLElement;
-    if (target.closest("[data-ann]")) return;
+    if (target.closest("[data-ann]") || target.closest("[data-inline-edit]")) return;
+
+    if (inlineEditRef.current) {
+      commitInlineEdit();
+    }
 
     const p = pointerToNorm(e.clientX, e.clientY, overlayRef.current);
     const multi = e.ctrlKey || e.metaKey || e.shiftKey;
@@ -387,11 +417,15 @@ export function useFolioPdfWorkspace() {
       if (hit) {
         setSelectedId(null);
         if (tool === "editText" && hit.object.kind === "text") {
-          setSelectedObjectIds([hit.objectId]);
-          editTextObject(hit.object);
+          beginInlineEdit(hit.object);
           return;
         }
         if (tool === "select") {
+          // Double-click text → Excel-like cell edit
+          if (e.detail >= 2 && hit.object.kind === "text") {
+            beginInlineEdit(hit.object);
+            return;
+          }
           let nextIds: ObjectId[];
           if (multi) {
             if (selectedObjectIds.includes(hit.objectId)) {
@@ -543,13 +577,21 @@ export function useFolioPdfWorkspace() {
     setCurrent((c) => Math.min(c, pageOrder.length - 2));
   }
 
+  const rememberCoverColor = useCallback((objectId: ObjectId, color: RgbColor) => {
+    coverColorOverridesRef.current.set(objectId, color);
+  }, []);
+
   const serializer = useMemo(() => new FolioPdfLibSerializer(), []);
 
   async function generateAndDownload() {
     if (!doc || !documentModel || !baselineRef.current) return;
+    const documentForExport = applyCoverColorOverrides(
+      documentModel,
+      coverColorOverridesRef.current,
+    );
     const bytes = await serializer.serialize({
       sourceBytes: doc.sourceBytes,
-      document: documentModel,
+      document: documentForExport,
       baseline: baselineRef.current,
       pageOrder,
       pageMeta,
@@ -560,6 +602,7 @@ export function useFolioPdfWorkspace() {
   }
 
   function selectTool(next: EditorTool) {
+    if (inlineEditRef.current) commitInlineEdit();
     setTool(next);
     setHoverObjectId(null);
     if (next === "image") pickImage();
@@ -585,6 +628,7 @@ export function useFolioPdfWorkspace() {
     selectedObjectIds,
     selectedObjectId: selectedObjectIds[selectedObjectIds.length - 1] ?? null,
     hoverObjectId,
+    inlineEdit,
     dirtyObjectIds,
     checkoutOpen,
     setCheckoutOpen,
@@ -595,6 +639,7 @@ export function useFolioPdfWorkspace() {
     srcPageIndex,
     pageAnns,
     pageObjects,
+    pageHeight,
     documentModel,
     baselineModel,
     history: {
@@ -616,6 +661,11 @@ export function useFolioPdfWorkspace() {
     onOverlayPointerMove,
     onOverlayPointerUp,
     clearHoverObject: () => setHoverObjectId(null),
+    rememberCoverColor,
+    onInlineDraftChange: (draft: string) =>
+      setInlineEdit((prev) => (prev ? { ...prev, draft } : prev)),
+    onInlineCommit: commitInlineEdit,
+    onInlineCancel: cancelInlineEdit,
     startAnnDrag,
     onImagePicked,
     rotateCurrent,
@@ -623,5 +673,24 @@ export function useFolioPdfWorkspace() {
     generateAndDownload,
     updateText: (id: string, text: string) =>
       setAnnotations((all) => updateAnnotationText(all, id, text)),
+  };
+}
+
+function applyCoverColorOverrides(
+  document: EditableDocument,
+  overrides: Map<ObjectId, RgbColor>,
+): EditableDocument {
+  if (overrides.size === 0) return document;
+  return {
+    ...document,
+    pages: document.pages.map((page) => ({
+      ...page,
+      objects: page.objects.map((obj) => {
+        if (obj.kind !== "text") return obj;
+        const cover = overrides.get(obj.id);
+        if (!cover || obj.coverColor) return obj;
+        return { ...obj, coverColor: cover };
+      }),
+    })),
   };
 }

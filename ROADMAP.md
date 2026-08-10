@@ -23,6 +23,8 @@ Pipeline: Byte Reader → XRef → Object Loader → Stream Decoder → Graphics
 
 Legacy overlay + `bakeEditsIntoPdf` remain until Stages 3–4. OCR / visual-fallback only as explicit `editability` exceptions.
 
+**Calibration / style (follow-up):** text bboxes use pdf.js TextLayer ascent + viewport transform; dirty preview/export sample page cover color and preserve/contrast fill + fontFamily.
+
 ## Phase 1 — ship & monetize
 - [ ] Stripe live keys + Apple Pay domain verification
 - [ ] Persist unlock tokens after payment (Redis / DB)

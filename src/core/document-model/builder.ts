@@ -76,8 +76,10 @@ export class DisplayListDocumentModelBuilder implements DocumentModelBuilder {
             zIndex: z++,
             content: textOp.content,
             fontResourceId,
+            fontFamily: textOp.fontFamily ?? null,
             fontSize: textOp.fontSize,
             fillColor: textOp.fillColor,
+            coverColor: textOp.coverColor ?? null,
             hasUnicodeMap,
           };
           objects.push(textObj);
@@ -213,10 +215,12 @@ function estimateBBoxNorm(
   pageHeight: number,
 ): { x: number; y: number; width: number; height: number } {
   const [, , , , tx, ty] = matrix;
-  const w = Math.max((content.length * fontSize * 0.5) / pageWidth, 0.02);
-  const h = Math.max(fontSize / pageHeight, 0.012);
+  const ascent = fontSize * 0.8;
+  const w = Math.max((content.length * fontSize * 0.5) / pageWidth, 0.001);
+  const h = Math.max(fontSize / pageHeight, 0.001);
   const x = tx / pageWidth;
-  const y = 1 - ty / pageHeight - h;
+  // PDF origin bottom-left → top-left norm; use ascent (not full em).
+  const y = 1 - ty / pageHeight - ascent / pageHeight;
   return { x, y, width: w, height: h };
 }
 

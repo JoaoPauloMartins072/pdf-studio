@@ -45,7 +45,11 @@ export type DisplayListText = {
   matrix: Matrix2D;
   fontSize: number;
   fontName: string | null;
+  /** Browser-usable family from pdf.js TextStyle when available. */
+  fontFamily?: string | null;
   fillColor: RgbColor | null;
+  /** Optional page-sample cover behind glyphs (header bars, etc.). */
+  coverColor?: RgbColor | null;
   /**
    * Normalized top-left bbox (0–1) when the producer already computed it
    * (e.g. pdf.js Stage 1 bridge). Preferred for hit-testing alignment.

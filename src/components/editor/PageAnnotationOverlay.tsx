@@ -1,47 +1,68 @@
 "use client";
 
 import type { PointerEvent } from "react";
+import { InlineTextCellEditor } from "@/components/editor/InlineTextCellEditor";
 import type {
   Annotation,
   DrawAnnotation,
   EditorTool,
   HighlightAnnotation,
 } from "@/lib/editor/editorModel";
-import type { ObjectId, PageObject } from "@/core/document-model/types";
+import type { ObjectId, PageObject, TextObject } from "@/core/document-model/types";
 import { pointsToSvgPath } from "@/lib/editor/pageNormCoords";
+
+type InlineEditState = {
+  objectId: ObjectId;
+  draft: string;
+};
 
 type Props = {
   tool: EditorTool;
   viewport: { w: number; h: number };
+  pageHeight: number;
   annotations: Annotation[];
   /** Page objects from the Editable Document Model (Stage 2 selection). */
   pageObjects: PageObject[];
   selectedId: string | null;
   selectedObjectIds: ObjectId[];
   hoverObjectId: ObjectId | null;
+  inlineEdit: InlineEditState | null;
   drawDraft: DrawAnnotation | null;
   highlightDraft: HighlightAnnotation | null;
   onSelect: (id: string | null) => void;
   onStartDrag: (e: PointerEvent, id: string, mode: "move" | "resize") => void;
   onChangeText: (id: string, text: string) => void;
+  onInlineDraftChange: (draft: string) => void;
+  onInlineCommit: () => void;
+  onInlineCancel: () => void;
 };
 
 export function PageAnnotationOverlay({
   tool,
   viewport,
+  pageHeight,
   annotations,
   pageObjects,
   selectedId,
   selectedObjectIds,
   hoverObjectId,
+  inlineEdit,
   drawDraft,
   highlightDraft,
   onSelect,
   onStartDrag,
   onChangeText,
+  onInlineDraftChange,
+  onInlineCommit,
+  onInlineCancel,
 }: Props) {
   const showModelChrome = tool === "editText" || tool === "select";
   const selectedSet = new Set(selectedObjectIds);
+  const editingObject =
+    inlineEdit &&
+    (pageObjects.find((o) => o.id === inlineEdit.objectId && o.kind === "text") as
+      | TextObject
+      | undefined);
 
   return (
     <>
@@ -50,30 +71,44 @@ export function PageAnnotationOverlay({
           const selected = selectedSet.has(obj.id);
           const hovered = hoverObjectId === obj.id;
           const editIdle = tool === "editText" && obj.kind === "text";
+          const isEditing = inlineEdit?.objectId === obj.id;
 
+          if (isEditing) return null;
           if (!selected && !hovered && !editIdle) return null;
 
           return (
             <div
               key={obj.id}
               data-model-object={obj.id}
-              className={`pointer-events-none absolute ${
+              className={`absolute box-border pointer-events-none ${
                 selected
-                  ? "border-2 border-sky-500 bg-sky-400/20"
+                  ? "border-2 border-sky-500 bg-sky-400/15"
                   : hovered
-                    ? "border border-sky-400 bg-sky-300/25"
-                    : "border border-sky-400/35"
+                    ? "border border-sky-400 bg-sky-300/10"
+                    : "border border-sky-500/50 bg-transparent"
               }`}
               style={{
-                left: `${obj.bbox.x * 100}%`,
-                top: `${obj.bbox.y * 100}%`,
-                width: `${obj.bbox.width * 100}%`,
-                height: `${obj.bbox.height * 100}%`,
+                left: obj.bbox.x * viewport.w,
+                top: obj.bbox.y * viewport.h,
+                width: Math.max(obj.bbox.width * viewport.w, 2),
+                height: Math.max(obj.bbox.height * viewport.h, 2),
               }}
               title={obj.kind === "text" ? obj.content : obj.kind}
             />
           );
         })}
+
+      {editingObject && inlineEdit && (
+        <InlineTextCellEditor
+          object={editingObject}
+          draft={inlineEdit.draft}
+          viewport={viewport}
+          pageHeight={pageHeight}
+          onChange={onInlineDraftChange}
+          onCommit={onInlineCommit}
+          onCancel={onInlineCancel}
+        />
+      )}
 
       {annotations.map((ann) => {
         if (ann.type === "draw") {

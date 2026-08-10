@@ -131,16 +131,16 @@ function writeStructuralTextReplace(
 ): void {
   const size = Math.max(8, obj.fontSize * (pageHeight / 792));
   const font = pickFont(obj.content, fonts);
-  const fill = obj.fillColor
-    ? rgb(clamp01(obj.fillColor.r), clamp01(obj.fillColor.g), clamp01(obj.fillColor.b))
-    : rgb(0.07, 0.07, 0.07);
+  const cover = obj.coverColor ?? { r: 1, g: 1, b: 1 };
+  const fillRgb = resolveExportFill(obj.fillColor, cover);
+  const fill = rgb(clamp01(fillRgb.r), clamp01(fillRgb.g), clamp01(fillRgb.b));
 
   page.drawRectangle({
     x: obj.bbox.x * pageWidth,
     y: toPdfY(pageHeight, obj.bbox.y, obj.bbox.height),
     width: Math.max(obj.bbox.width * pageWidth, obj.content.length * obj.fontSize * 0.55),
     height: obj.bbox.height * pageHeight,
-    color: rgb(1, 1, 1),
+    color: rgb(clamp01(cover.r), clamp01(cover.g), clamp01(cover.b)),
     borderWidth: 0,
   });
   page.drawText(obj.content || " ", {
@@ -150,6 +150,19 @@ function writeStructuralTextReplace(
     font,
     color: fill,
   });
+}
+
+function resolveExportFill(
+  fill: { r: number; g: number; b: number } | null,
+  cover: { r: number; g: number; b: number },
+): { r: number; g: number; b: number } {
+  const f = fill ?? { r: 0.07, g: 0.07, b: 0.07 };
+  const fillLum = 0.2126 * f.r + 0.7152 * f.g + 0.0722 * f.b;
+  const coverLum = 0.2126 * cover.r + 0.7152 * cover.g + 0.0722 * cover.b;
+  if (fillLum < 0.2 && coverLum < 0.55) {
+    return { r: 1, g: 1, b: 1 };
+  }
+  return f;
 }
 
 async function writeModelImage(

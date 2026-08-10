@@ -92,6 +92,7 @@ export function FolioPdfWorkspace() {
             className="relative bg-white shadow-lg"
             style={{
               width: ws.viewport.w,
+              height: ws.viewport.h,
               transform: `rotate(${ws.pageMeta[ws.srcPageIndex]?.rotation ?? 0}deg)`,
             }}
           >
@@ -110,6 +111,7 @@ export function FolioPdfWorkspace() {
                 width={ws.viewport.w}
                 height={ws.viewport.h}
                 dirtyObjectIds={ws.dirtyObjectIds}
+                onCoverSampled={ws.rememberCoverColor}
               />
             )}
             <div
@@ -124,16 +126,21 @@ export function FolioPdfWorkspace() {
               <PageAnnotationOverlay
                 tool={ws.tool}
                 viewport={ws.viewport}
+                pageHeight={ws.pageHeight}
                 annotations={ws.pageAnns}
                 pageObjects={ws.pageObjects}
                 selectedId={ws.selectedId}
                 selectedObjectIds={ws.selectedObjectIds}
                 hoverObjectId={ws.hoverObjectId}
+                inlineEdit={ws.inlineEdit}
                 drawDraft={ws.drawDraft}
                 highlightDraft={ws.highlightDraft}
                 onSelect={ws.setSelectedId}
                 onStartDrag={ws.startAnnDrag}
                 onChangeText={ws.updateText}
+                onInlineDraftChange={ws.onInlineDraftChange}
+                onInlineCommit={ws.onInlineCommit}
+                onInlineCancel={ws.onInlineCancel}
               />
             </div>
           </div>

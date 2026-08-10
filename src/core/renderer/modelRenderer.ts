@@ -100,16 +100,32 @@ function paintTextObject(
   const w = Math.max(obj.bbox.width * target.width, obj.content.length * obj.fontSize * 0.5);
   const h = Math.max(obj.bbox.height * target.height, 1);
   const fontSize = Math.max(8, obj.fontSize * (target.height / Math.max(page.height, 1)));
+  const cover = obj.coverColor ?? { r: 1, g: 1, b: 1 };
+  const fill = resolvePaintFill(obj.fillColor, cover);
 
   if (coverBackground) {
-    target.fillRect(x, y, w, h, { r: 1, g: 1, b: 1, a: 1 });
+    target.fillRect(x, y, w, h, { ...cover, a: 1 });
   }
 
   target.fillText(obj.content || " ", x, y, {
     fontSize,
-    color: rgbToRgba(obj.fillColor),
+    color: { ...fill, a: 1 },
+    fontFamily: obj.fontFamily ?? undefined,
     maxWidth: w,
   });
+}
+
+function resolvePaintFill(
+  fill: { r: number; g: number; b: number } | null,
+  cover: { r: number; g: number; b: number },
+): { r: number; g: number; b: number } {
+  const f = fill ?? { r: 0.07, g: 0.07, b: 0.07 };
+  const fillLum = 0.2126 * f.r + 0.7152 * f.g + 0.0722 * f.b;
+  const coverLum = 0.2126 * cover.r + 0.7152 * cover.g + 0.0722 * cover.b;
+  if (fillLum < 0.2 && coverLum < 0.55) {
+    return { r: 1, g: 1, b: 1 };
+  }
+  return f;
 }
 
 function paintPathObject(target: RenderTarget, obj: PathObject): void {
@@ -173,6 +189,7 @@ function paintDisplayListText(
     target.fillText(content || " ", bbox.x * target.width, bbox.y * target.height, {
       fontSize,
       color: rgbToRgba(live?.fillColor ?? op.fillColor),
+      fontFamily: live?.fontFamily ?? op.fontFamily ?? undefined,
       maxWidth: bbox.width * target.width,
     });
   }
